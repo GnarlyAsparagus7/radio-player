@@ -1,6 +1,7 @@
 import { Station } from "./types";
 
 const FAVORITES_KEY = "radio-favorites";
+const FAVORITES_UPDATED_EVENT = "favoritesUpdated";
 
 export function getFavorites(): Station[] {
   if (typeof window === "undefined") return [];
@@ -16,6 +17,10 @@ export function addToFavorites(station: Station) {
   if (!isAlreadyFavorite) {
     favorites.push(station);
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    // Dispatch custom event
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(FAVORITES_UPDATED_EVENT));
+    }
   }
 }
 
@@ -23,9 +28,15 @@ export function removeFromFavorites(stationUrl: string) {
   const favorites = getFavorites();
   const updatedFavorites = favorites.filter((fav) => fav.url !== stationUrl);
   localStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
+  // Dispatch custom event
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(FAVORITES_UPDATED_EVENT));
+  }
 }
 
 export function isStationFavorite(stationUrl: string): boolean {
   const favorites = getFavorites();
   return favorites.some((fav) => fav.url === stationUrl);
 }
+
+export { FAVORITES_UPDATED_EVENT };

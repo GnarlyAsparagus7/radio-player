@@ -25,7 +25,7 @@ export function StationList({ stations, onSelectStation, loading }: StationListP
   );
 
   return (
-    <Card className="w-96 h-[calc(100vh-8rem)] bg-background/80 backdrop-blur-lg">
+    <Card className="w-full h-[calc(100vh-8rem)] bg-background/80 backdrop-blur-lg">
       <div className="p-4">
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -33,7 +33,7 @@ export function StationList({ stations, onSelectStation, loading }: StationListP
             placeholder="Search stations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            className="pl-8 w-full pr-4"
           />
         </div>
       </div>
@@ -51,11 +51,10 @@ export function StationList({ stations, onSelectStation, loading }: StationListP
               </div>
             ))
           ) : filteredStations.length > 0 ? (
-            filteredStations.map((station, index) => (
-              <Button
-                key={index}
-                variant="ghost"
-                className="flex items-start gap-3 h-auto p-3 justify-start"
+            !loading && filteredStations.map((station) => (
+              <Card
+                key={station.url}
+                className="p-2 cursor-pointer hover:bg-accent transition-colors"
                 onClick={() => onSelectStation(station)}
               >
                 {station.favicon ? (
@@ -79,7 +78,7 @@ export function StationList({ stations, onSelectStation, loading }: StationListP
                     {station.tags || "No tags"} • {station.bitrate || "Unknown"}kbps • {station.codec || "Unknown"}
                   </p>
                 </div>
-              </Button>
+              </Card>
             ))
           ) : (
             <div className="p-4 text-center text-muted-foreground">

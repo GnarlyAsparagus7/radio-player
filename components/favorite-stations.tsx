@@ -21,8 +21,14 @@ export function FavoriteStations({ onSelectStation }: FavoriteStationsProps) {
 
     updateFavorites();
 
+    // Listen for both storage events and our custom favoritesUpdated event
     window.addEventListener("storage", updateFavorites);
-    return () => window.removeEventListener("storage", updateFavorites);
+    window.addEventListener("favoritesUpdated", updateFavorites);
+    
+    return () => {
+      window.removeEventListener("storage", updateFavorites);
+      window.removeEventListener("favoritesUpdated", updateFavorites);
+    };
   }, []);
 
   if (favorites.length === 0) {
@@ -34,7 +40,7 @@ export function FavoriteStations({ onSelectStation }: FavoriteStationsProps) {
   }
 
   return (
-    <ScrollArea className="h-[300px]">
+    <ScrollArea className="h-[calc(100vh-12rem)]">
       <div className="space-y-2">
         {favorites.map((station) => (
           <Card

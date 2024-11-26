@@ -7,6 +7,7 @@ import { RadioPlayer } from "@/components/radio-player";
 import { FavoriteStations } from "@/components/favorite-stations"; 
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsiblePanel } from "@/components/collapsible-panel"; 
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   fetchStationsByCountry,
   fetchTopStations,
@@ -20,6 +21,13 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [isStationsPanelExpanded, setIsStationsPanelExpanded] = useState(false);
   const { toast } = useToast();
+
+  const handleStationSelect = (station: Station) => {
+    setSelectedStation(station);
+    if (station.country) {
+      setSelectedCountry(station.country);
+    }
+  };
 
   useEffect(() => {
     loadTopStations();
@@ -61,33 +69,36 @@ export default function Home() {
   };
 
   return (
-    <main className="relative min-h-screen bg-background">
-      <WorldMap
-        selectedCountry={selectedCountry}
-        onSelectCountry={handleCountrySelect}
-      />
-      
-      <div className="relative z-10">
-        {/* Available Stations - Left Side */}
-        <CollapsiblePanel 
-          title="Available Stations" 
-          side="left"
-          isExpanded={isStationsPanelExpanded}
-          onExpandedChange={setIsStationsPanelExpanded}
-        >
-          <StationList
-            stations={stations}
-            onSelectStation={setSelectedStation}
-            loading={loading}
-          />
-        </CollapsiblePanel>
+    <main className="flex min-h-screen flex-col items-center justify-between relative">
+      <ThemeToggle />
+      <div className="w-full h-screen flex flex-col md:flex-row">
+        <WorldMap
+          selectedCountry={selectedCountry}
+          onSelectCountry={handleCountrySelect}
+        />
+        
+        <div className="relative z-10">
+          {/* Available Stations - Left Side */}
+          <CollapsiblePanel 
+            title="Available Stations" 
+            side="left"
+            isExpanded={isStationsPanelExpanded}
+            onExpandedChange={setIsStationsPanelExpanded}
+          >
+            <StationList
+              stations={stations}
+              onSelectStation={setSelectedStation}
+              loading={loading}
+            />
+          </CollapsiblePanel>
 
-        {/* Favorite Stations - Right Side */}
-        <CollapsiblePanel title="Favorite Stations" side="right">
-          <FavoriteStations onSelectStation={setSelectedStation} />
-        </CollapsiblePanel>
+          {/* Favorite Stations - Right Side */}
+          <CollapsiblePanel title="Favorite Stations" side="right">
+            <FavoriteStations onSelectStation={handleStationSelect} />
+          </CollapsiblePanel>
 
-        <RadioPlayer station={selectedStation} />
+          <RadioPlayer station={selectedStation} />
+        </div>
       </div>
     </main>
   );

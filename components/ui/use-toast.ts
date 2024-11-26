@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { cn } from "@/lib/utils"
 
 import type {
   ToastActionElement,
@@ -147,6 +148,7 @@ function toast({ ...props }: Toast) {
       type: "UPDATE_TOAST",
       toast: { ...props, id },
     })
+
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
   dispatch({
@@ -155,8 +157,15 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
-      position: "top-right",
+      variant: props.variant ?? "default",
+      duration: props.duration ?? 3000,
+      className: cn(
+        "bg-background border-border",
+        props.className
+      ),
+      onDismiss: dismiss,
       onOpenChange: (open) => {
+        props.onOpenChange?.(open)
         if (!open) dismiss()
       },
     },

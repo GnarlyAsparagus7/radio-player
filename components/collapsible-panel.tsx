@@ -36,8 +36,8 @@ export function CollapsiblePanel({
       className={cn(
         "fixed top-4 bottom-24 transition-all duration-300 ease-in-out",
         side === "left" ? "left-4" : "right-4",
-        !isExpanded && "w-12 hover:w-80",
-        isExpanded && "w-80",
+        !isExpanded && "w-12 hover:w-96",
+        isExpanded && "w-96",
         className
       )}
       onMouseEnter={() => handleExpandChange(true)}
@@ -47,7 +47,7 @@ export function CollapsiblePanel({
         {/* Collapsed Title */}
         <div
           className={cn(
-            "absolute top-0 left-0 w-12 h-full flex items-center justify-center transition-opacity duration-300 bg-background/80 backdrop-blur-sm rounded-lg",
+            "absolute top-0 left-0 w-12 h-full flex items-center justify-center transition-opacity duration-300 bg-background border rounded-lg shadow-md",
             isExpanded && "opacity-0"
           )}
         >
@@ -64,11 +64,11 @@ export function CollapsiblePanel({
             isExpanded && "opacity-100"
           )}
         >
-          <h2 className="text-lg font-semibold mb-2 flex items-center justify-between">
-            {title}
-          </h2>
-          <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4 h-[calc(100%-2.5rem)]">
-            {children}
+          <div className="bg-background border rounded-lg shadow-md p-4 h-full">
+            <h2 className="text-lg font-semibold mb-4">{title}</h2>
+            <div className="h-[calc(100%-3.5rem)] overflow-auto">
+              {children}
+            </div>
           </div>
         </div>
       </div>
