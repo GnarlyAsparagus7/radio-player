@@ -8,20 +8,106 @@ import {
   ZoomableGroup,
   Marker,
 } from "react-simple-maps";
+import { useQuery } from "@tanstack/react-query";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { countryCoordinates } from "@/lib/coordinates";
+import { fetchCountryStats } from "@/lib/radio-browser";
+import { Radio } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const geoUrl =
-  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 interface WorldMapProps {
   selectedCountry: string | null;
   onSelectCountry: (countryCode: string) => void;
 }
 
+const CountryPreview = ({ countryName }: { countryName: string }) => {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['countryStats', countryName],
+    queryFn: () => fetchCountryStats(countryName),
+    enabled: !!countryName,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+    );
+  }
+
+  if (!stats?.topStations.length) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-3">
+      {stats.popularTags.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-foreground">Popular Genres:</p>
+          <div className="flex flex-wrap gap-1">
+            {stats.popularTags.map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-foreground">Top Stations:</p>
+        <div className="space-y-2">
+          {stats.topStations.map((station) => (
+            <div key={station.name} className="flex items-center gap-2">
+              {station.favicon ? (
+                <img
+                  src={station.favicon}
+                  alt={station.name}
+                  className="w-4 h-4 rounded-sm object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <Radio className="w-4 h-4 text-foreground" />
+              )}
+              <span className="text-xs truncate text-foreground">{station.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const WorldMap = memo(({ selectedCountry, onSelectCountry }: WorldMapProps) => {
   const [markerScale, setMarkerScale] = useState(1);
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>();
+
+  const { data: stationCounts } = useQuery({
+    queryKey: ["stationCounts"],
+    queryFn: async () => {
+      const response = await fetch(
+        "https://de1.api.radio-browser.info/json/stations/countrycodes"
+      );
+      const data = await response.json();
+      return data.reduce((acc: Record<string, number>, item: any) => {
+        acc[item.name] = item.stationcount;
+        return acc;
+      }, {});
+    },
+  });
 
   useEffect(() => {
     if (!selectedCountry) {
@@ -76,39 +162,57 @@ const WorldMap = memo(({ selectedCountry, onSelectCountry }: WorldMapProps) => {
                 geographies.map((geo) => {
                   const countryName = geo.properties.name;
                   return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      onClick={() => {
-                        onSelectCountry(countryName);
-                      }}
-                      style={{
-                        default: {
-                          fill: selectedCountry === countryName
-                            ? "hsl(var(--primary))"
-                            : "hsl(var(--muted-foreground))",
-                          stroke: "hsl(var(--border))",
-                          strokeWidth: 0.5,
-                          outline: "none",
-                          transition: "all 0.3s ease-in-out",
-                          animation: selectedCountry === countryName
-                            ? "pulse 2s infinite"
-                            : "none",
-                        },
-                        hover: {
-                          fill: "hsl(var(--primary))",
-                          stroke: "hsl(var(--border))",
-                          strokeWidth: 0.5,
-                          outline: "none",
-                        },
-                        pressed: {
-                          fill: "hsl(var(--primary))",
-                          stroke: "hsl(var(--border))",
-                          strokeWidth: 0.5,
-                          outline: "none",
-                        },
-                      }}
-                    />
+                    <HoverCard key={geo.rsmKey} openDelay={0} closeDelay={0}>
+                      <HoverCardTrigger asChild>
+                        <Geography
+                          geography={geo}
+                          onClick={() => {
+                            onSelectCountry(countryName);
+                          }}
+                          style={{
+                            default: {
+                              fill: selectedCountry === countryName
+                                ? "hsl(var(--primary))"
+                                : "hsl(var(--muted-foreground))",
+                              stroke: "hsl(var(--border))",
+                              strokeWidth: 0.5,
+                              outline: "none",
+                              transition: "all 0.3s ease-in-out"
+                            },
+                            hover: {
+                              fill: "hsl(var(--primary))",
+                              stroke: "hsl(var(--border))",
+                              strokeWidth: 0.5,
+                              outline: "none",
+                              cursor: "pointer",
+                            },
+                            pressed: {
+                              fill: "hsl(var(--primary))",
+                              stroke: "hsl(var(--border))",
+                              strokeWidth: 0.5,
+                              outline: "none",
+                            },
+                          }}
+                        />
+                      </HoverCardTrigger>
+                      <HoverCardContent 
+                        side="top" 
+                        align="center"
+                        sideOffset={5}
+                        className="z-[1000] w-64 bg-background/95 backdrop-blur border shadow-lg"
+                      >
+                        <div className="flex flex-col gap-3">
+                          <div className="space-y-1">
+                            <h4 className="font-medium text-lg text-foreground">{countryName}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {stationCounts?.[countryName] ?? 0} stations available
+                            </p>
+                          </div>
+                          
+                          <CountryPreview countryName={countryName} />
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   );
                 })
               }

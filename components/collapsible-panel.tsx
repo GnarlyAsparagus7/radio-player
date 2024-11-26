@@ -47,11 +47,11 @@ export function CollapsiblePanel({
         {/* Collapsed Title */}
         <div
           className={cn(
-            "absolute top-0 left-0 w-12 h-full flex items-center justify-center transition-opacity duration-300 bg-background border rounded-lg shadow-md",
+            "absolute top-0 left-0 w-12 h-full flex items-center justify-center transition-opacity duration-300 bg-background/95 backdrop-blur border rounded-lg shadow-md",
             isExpanded && "opacity-0"
           )}
         >
-          <div className="rotate-90 whitespace-nowrap text-sm font-medium">
+          <div className="rotate-90 whitespace-nowrap text-sm font-medium text-foreground">
             {title}
           </div>
         </div>
@@ -64,8 +64,8 @@ export function CollapsiblePanel({
             isExpanded && "opacity-100"
           )}
         >
-          <div className="bg-background border rounded-lg shadow-md p-4 h-full">
-            <h2 className="text-lg font-semibold mb-4">{title}</h2>
+          <div className="bg-background/95 backdrop-blur border rounded-lg shadow-md p-4 h-full">
+            <h2 className="text-lg font-semibold mb-4 text-foreground">{title}</h2>
             <div className="h-[calc(100%-3.5rem)] overflow-auto">
               {children}
             </div>
