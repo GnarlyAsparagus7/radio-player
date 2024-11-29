@@ -1,29 +1,30 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Volume2, VolumeX, Play, Pause, Heart } from "lucide-react";
+import { Volume2, VolumeX, Play, Pause, Heart, Radio } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { addToFavorites, removeFromFavorites, isStationFavorite } from "@/lib/favorites";
-import { cn } from "@/lib/utils";
+import { cn, debounce } from "@/lib/utils";
 
 interface RadioPlayerProps {
   station: {
     name: string;
     url: string;
     favicon: string;
-    tags: string;
+    tags?: string;
   } | null;
 }
 
 export function RadioPlayer({ station }: RadioPlayerProps) {
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState([100]);
   const [isMuted, setIsMuted] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const { toast } = useToast();
 
   // Check if station is favorite when it changes
@@ -33,16 +34,27 @@ export function RadioPlayer({ station }: RadioPlayerProps) {
     }
   }, [station]);
 
-  // Auto-play when station changes
+  // Optimize audio element with lazy loading and cleanup
   useEffect(() => {
-    if (station && audioRef.current) {
+    if (station) {
+      // Create audio element only when needed
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
+        audioRef.current.preload = "none"; // Don't preload audio until play
+      }
+      
+      // Configure audio element
+      audioRef.current.src = station.url;
+      
+      // Auto-play when station changes
       const playNewStation = async () => {
         try {
-          audioRef.current!.src = station.url;
+          audioRef.current!.preload = "auto";
           const playPromise = audioRef.current!.play();
           if (playPromise !== undefined) {
             await playPromise;
             setIsPlaying(true);
+            setIsLoaded(true);
             toast({
               title: "Now Playing",
               description: `${station.name}`,
@@ -58,32 +70,51 @@ export function RadioPlayer({ station }: RadioPlayerProps) {
           setIsPlaying(false);
         }
       };
-
+      
       playNewStation();
+      
+      // Cleanup function
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+          setIsPlaying(false);
+          setIsLoaded(false);
+        }
+      };
     }
-    
-    // Cleanup function to stop playing when component unmounts or station changes
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    };
   }, [station, toast]);
 
-  const togglePlay = async () => {
+  // Separate effect for volume and mute changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume[0] / 100;
+      audioRef.current.muted = isMuted;
+    }
+  }, [volume, isMuted]);
+
+  // Optimize play/pause with proper resource management
+  const togglePlay = useCallback(async () => {
     if (!audioRef.current || !station) return;
 
     try {
       if (isPlaying) {
         audioRef.current.pause();
+        setIsPlaying(false);
       } else {
+        // Set preload to auto only when attempting to play
+        audioRef.current.preload = "auto";
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
+          setIsPlaying(true);
+          setIsLoaded(true);
+          toast({
+            title: "Now Playing",
+            description: `${station.name}`,
+          });
         }
       }
-      setIsPlaying(!isPlaying);
     } catch (error) {
       console.error("Playback error:", error);
       toast({
@@ -93,7 +124,47 @@ export function RadioPlayer({ station }: RadioPlayerProps) {
       });
       setIsPlaying(false);
     }
-  };
+  }, [station, isPlaying, toast]);
+
+  // Optimize image loading with lazy loading and error handling
+  const StationImage = memo(({ favicon, name }: { favicon: string; name: string }) => {
+    const [imgError, setImgError] = useState(false);
+
+    if (!favicon || imgError) {
+      return (
+        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+          <Radio className="h-6 w-6 text-muted-foreground" />
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={favicon}
+        alt={name}
+        className="w-12 h-12 rounded-lg object-cover"
+        loading="lazy"
+        onError={() => setImgError(true)}
+      />
+    );
+  });
+
+  StationImage.displayName = "StationImage";
+
+  // Optimize volume control with debouncing
+  const debouncedVolumeChange = useMemo(
+    () => debounce((value: number[]) => {
+      if (audioRef.current) {
+        audioRef.current.volume = value[0] / 100;
+      }
+    }, 100),
+    []
+  );
+
+  const handleVolumeChange = useCallback((value: number[]) => {
+    setVolume(value);
+    debouncedVolumeChange(value);
+  }, [debouncedVolumeChange]);
 
   const toggleMute = () => {
     if (audioRef.current) {
@@ -121,13 +192,6 @@ export function RadioPlayer({ station }: RadioPlayerProps) {
     setIsFavorite(!isFavorite);
   };
 
-  const handleVolumeChange = (value: number[]) => {
-    if (audioRef.current) {
-      audioRef.current.volume = value[0] / 100;
-      setVolume(value);
-    }
-  };
-
   const handleError = () => {
     setIsPlaying(false);
     toast({
@@ -149,15 +213,9 @@ export function RadioPlayer({ station }: RadioPlayerProps) {
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center gap-4">
           {station.favicon && (
-            <img
-              src={station.favicon}
-              alt={station.name}
-              className="w-12 h-12 rounded-lg object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://placehold.co/48x48";
-              }}
-            />
+            <StationImage favicon={station.favicon} name={station.name} />
           )}
+
           <div>
             <h3 className="font-semibold">{station.name}</h3>
             <p className="text-sm text-muted-foreground">{station.tags}</p>
